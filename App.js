@@ -7,6 +7,8 @@ import Icon from 'react-native-vector-icons/Feather'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 
+import Spinner from 'react-native-loading-spinner-overlay'
+
 var colors = {
   primary: '#1EA7DB',
   secondary: '#3E4148',
@@ -29,8 +31,15 @@ class SignUpScreen extends React.Component {
 
 class LoginScreen extends React.Component {
 
+  constructor(props){
+    super(props)
+
+    this.login = this.login.bind(this)
+  }
+
   state = {
-    fontLoaded: false
+    fontLoaded: false,
+    loading: false,
   }
 
    async componentWillMount() {
@@ -45,9 +54,16 @@ class LoginScreen extends React.Component {
       })
   }
 
+  login(){
+
+    this.setState({
+      loading: true
+    })
+  }
+
   render(){
 
-    var { fontLoaded, emailInput, passwordInput } = this.state
+    var { loading, fontLoaded, emailInput, passwordInput } = this.state
 
     return(
 
@@ -106,11 +122,26 @@ class LoginScreen extends React.Component {
           <View style={styles.separator}></View>
           <View style={styles.viewButton}>
             {fontLoaded ? (<Text style={styles.loginText}>Login</Text>) : null }
-            <TouchableHighlight style={styles.buttonLogin} onPress={() => this.props.navigation.navigate('SignUp')}>
+            <TouchableHighlight style={styles.buttonLogin} onPress={() => this.login()}>
               <Icon name="arrow-right" color={colors.white} size={24}/> 
             </TouchableHighlight>
           </View>
+          <View style={styles.bottomButtons}>
+            {fontLoaded ? (
+            <TouchableHighlight onPress={() => this.props.navigation.navigate('SignUp')}>
+              <Text style={styles.create}>Criar Conta</Text>
+            </TouchableHighlight>
+              ) : null }
+            {fontLoaded ? (
+            <TouchableHighlight  onPress={() => this.props.navigation.navigate('SignUp')}>
+              <Text style={styles.create}>Esqueceu Senha</Text>
+            </TouchableHighlight>
+              ) : null }
+          </View>
         </View>
+        <Spinner
+          visible={loading}
+        /> 
       </View>
       )
   }
@@ -147,10 +178,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: '#fff',
     alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   header : {
-    height: 220,
+    height: 250,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -161,7 +192,6 @@ const styles = StyleSheet.create({
     height: 120
   },
   login: {
-    paddingTop: 80,
     paddingLeft: 20,
     paddingRight: 20,
     width: '100%',
@@ -197,5 +227,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.secondary,
     borderRadius: 30
+  },
+  bottomButtons : {
+    marginTop: 120,
+    marginBottom: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  create : {
+    fontSize: 18,
+    fontFamily: 'ubuntuMedium',
+    color: colors.secondaryOp
   }
 });
