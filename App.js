@@ -1,8 +1,11 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import * as Font from 'expo-font';
-import { StyleSheet, Text, View, Image, TextInput, TouchableHighlight } from 'react-native';
+import { StatusBar } from 'expo-status-bar'
+import React from 'react'
+import * as Font from 'expo-font'
+import { StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button } from 'react-native'
 import Icon from 'react-native-vector-icons/Feather'
+
+import { NavigationContainer } from '@react-navigation/native'
+import { createStackNavigator } from '@react-navigation/stack'
 
 var colors = {
   primary: '#1EA7DB',
@@ -11,7 +14,20 @@ var colors = {
   white: '#FFF'
 }
 
-export default class App extends React.Component {
+
+class SignUpScreen extends React.Component {
+  render(){
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Sign Up Screen</Text>
+        <Button title="Go back" onPress={() => this.props.navigation.goBack()} />
+      </View>
+    )
+  }
+}
+
+
+class LoginScreen extends React.Component {
 
   state = {
     fontLoaded: false
@@ -33,8 +49,9 @@ export default class App extends React.Component {
 
     var { fontLoaded, emailInput, passwordInput } = this.state
 
-    return (
-      <View style={styles.container}>
+    return(
+
+    <View style={styles.container}>
         <StatusBar style="auto" />
         <View style={styles.header}>
           <Image
@@ -89,12 +106,37 @@ export default class App extends React.Component {
           <View style={styles.separator}></View>
           <View style={styles.viewButton}>
             {fontLoaded ? (<Text style={styles.loginText}>Login</Text>) : null }
-            <TouchableHighlight style={styles.buttonLogin}>
+            <TouchableHighlight style={styles.buttonLogin} onPress={() => this.props.navigation.navigate('SignUp')}>
               <Icon name="arrow-right" color={colors.white} size={24}/> 
             </TouchableHighlight>
           </View>
         </View>
       </View>
+      )
+  }
+}
+
+const Stack = createStackNavigator();
+
+export default class App extends React.Component {
+
+  constructor(props){
+    super(props)
+
+    console.disableYellowBox = true
+  }
+
+  render(){
+
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{
+    headerShown: false
+      }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     );  
   }
 }
@@ -108,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   header : {
-    height: 200,
+    height: 220,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -119,7 +161,7 @@ const styles = StyleSheet.create({
     height: 120
   },
   login: {
-    paddingTop: 60,
+    paddingTop: 80,
     paddingLeft: 20,
     paddingRight: 20,
     width: '100%',
