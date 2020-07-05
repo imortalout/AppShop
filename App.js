@@ -10,6 +10,8 @@ import { createStackNavigator } from '@react-navigation/stack'
 import Spinner from 'react-native-loading-spinner-overlay'
 import Toast, {DURATION} from 'react-native-easy-toast'
 
+import DateTimePickerModal from "react-native-modal-datetime-picker"
+
 import firebase from 'firebase'
 
 var firebaseConfig = {
@@ -26,6 +28,10 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig)
 }
 
+// Login Teste
+// teste@teste.com[Email]
+// 123456789[Senha]
+
 var colors = {
   primary: '#1EA7DB',
   secondary: '#3E4148',
@@ -35,15 +41,232 @@ var colors = {
 
 
 class SignUpScreen extends React.Component {
+
+  constructor(props){
+    super(props)
+
+    this._handleConfirm = this._handleConfirm.bind(this)
+    this._hideDate = this._hideDate.bind(this)
+    this.openDate = this.openDate.bind(this)
+  }
+
+  state = {
+    fontLoaded: false,
+    loading: false,
+    date: false,
+    dateText: 'DATA DE NASCIMENTO'
+  }
+
+   async componentWillMount() {
+
+      await Font.loadAsync({
+          'ubuntuMedium': require('./assets/fonts/Ubuntu-Medium.ttf'),
+          'ubuntuRegular': require('./assets/fonts/Ubuntu-Regular.ttf'),
+      })
+
+      this.setState({
+          fontLoaded: true,
+      })
+  }
+
+  _handleConfirm(date){
+    console.log(date)
+
+     var time = date.getTime()
+
+     function timeConverter(UNIX_timestamp){
+      var a = new Date(UNIX_timestamp)
+      var year = a.getFullYear()
+      var month = a.getMonth()
+      var date = a.getDate()
+      month = month + 1
+
+      if(date < 10){
+        date = '0' + date 
+      }
+      if(month < 10){
+        month = '0' + month 
+      }
+
+      var time = date + '/' + month + '/' + year 
+      return time;
+    }
+
+    var timeShow = timeConverter(time)
+
+    console.log(timeShow)
+    
+
+    this.setState({
+        date: false,
+        dateText: timeShow,
+    })
+  }
+
+  _hideDate(){
+    this.setState({
+        date: false
+    })
+  }
+
+  openDate(){
+    this.setState({
+        date: true
+    })
+  }
+
   render(){
+
+    var  { fontLoaded, date, emailInput, passwordInput, nameInput, dateText } =  this.state
+
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text>Sign Up Screen</Text>
-        <Button title="Go back" onPress={() => this.props.navigation.goBack()} />
-      </View>
+      <ScrollView contentContainerStyle={signstyles.view} keyboardShouldPersistTaps='handled'>
+        <View style={signstyles.header}>
+          <TouchableHighlight onPress={() => this.props.navigation.goBack()} style={signstyles.buttonBack}>
+            <Icon name="chevron-left" color={colors.secondary} size={30}/> 
+          </TouchableHighlight>
+          {fontLoaded ? (<Text style={signstyles.title}>Criar Conta</Text>) : null }
+        </View>
+        <View style={signstyles.form}>
+           {fontLoaded ? (
+            <TextInput
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({nameInput: text})
+            }}
+            style={signstyles.input}
+            textAlignVertical='top'
+            value={nameInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="NOME"
+            placeholderTextColor={colors.white}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.email.focus(); }}
+            blurOnSubmit={false}
+          />
+            ) : null}
+          <View style={signstyles.separator}></View>
+          {fontLoaded ? (
+            <TextInput
+            ref={(input) => { this.email = input}}
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({emailInput: text})
+            }}
+            style={signstyles.input}
+            textAlignVertical='top'
+            value={emailInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="EMAIL"
+            placeholderTextColor={colors.white}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.senha.focus(); }}
+            blurOnSubmit={false}
+          />
+            ) : null}
+          <View style={signstyles.separator}></View>
+          {fontLoaded ? (
+            <TextInput
+            ref={(input) => { this.senha = input}}
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({passwordInput: text})
+            }}
+            style={signstyles.input}
+            textAlignVertical='top'
+            value={passwordInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="SENHA"
+            placeholderTextColor={colors.white}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.openDate(); }}
+            blurOnSubmit={false}
+            secureTextEntry={true}
+          />
+            ) : null}
+          <View style={signstyles.separator}></View>
+          <TouchableHighlight onPress={() => this.openDate()}>
+            <Text style={signstyles.date} >{dateText}</Text>
+          </TouchableHighlight>
+          <View style={signstyles.separator}></View>
+          <DateTimePickerModal
+                isVisible={date}
+                mode="date"
+                onConfirm={this._handleConfirm}
+                onCancel={this._hideDate}
+                headerTextIOS="Escolha as Horas"
+                confirmTextIOS="Confirmar"
+                cancelTextIOS="Cancelar"
+              />
+        </View>
+      </ScrollView>
     )
   }
 }
+
+const signstyles = StyleSheet.create({
+  view: {
+    width: '100%',
+    backgroundColor: colors.primary,
+    height: '100%',
+  },
+  header: {
+    paddingTop: 40,
+    paddingLeft: 20,
+    paddingBottom: 30,
+    backgroundColor: colors.white
+  },
+  buttonBack : {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  title: {
+    fontSize: 24,
+    color: colors.secondary,
+    marginTop: 20,
+    fontFamily: 'ubuntuMedium',
+  },
+  form: {
+    width: '100%',
+    paddingTop: 20,
+    paddingBottom: 60,
+    paddingLeft: 20,
+    paddingRight: 20
+  },
+  input : {
+    color: colors.white,
+    fontFamily: 'ubuntuMedium', 
+    fontSize: 16,
+    paddingTop: 8,
+    marginTop: 20,
+    paddingBottom: 18,
+  },
+  separator : {
+    width: '100%',
+    height: 1,
+    backgroundColor: colors.white
+  },
+  date : {
+    color: colors.white,
+    fontFamily: 'ubuntuMedium', 
+    fontSize: 16,
+    marginLeft: 4,
+    paddingTop: 8,
+    marginTop: 20,
+    paddingBottom: 18,
+  }
+})
 
 class HomeScreen extends React.Component {
   render(){
@@ -140,7 +363,7 @@ class LoginScreen extends React.Component {
         <StatusBar style="auto" />
         <KeyboardAvoidingView
             behavior={Platform.OS == "ios" ? "padding" : "height"}
-            style={{width: '100%', justifyContent: 'space-between', height: '100%'}}
+            style={loginstyles.keyboard}
           >
         <View style={loginstyles.header}>
           <Image
@@ -234,33 +457,6 @@ class LoginScreen extends React.Component {
   }
 }
 
-const Stack = createStackNavigator();
-
-export default class App extends React.Component {
-
-  constructor(props){
-    super(props)
-
-    console.disableYellowBox = true
-  }
-
-  render(){
-
-    return (
-      <NavigationContainer>
-        <Stack.Navigator 
-          screenOptions={{
-            headerShown: false
-          }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    );  
-  }
-}
-
 const loginstyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -269,6 +465,11 @@ const loginstyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     height: '100%',
+  },
+  keyboard : {
+    width: '100%', 
+    justifyContent: 'space-between', 
+    height: '100%'
   },
   header : {
     height: 220,
@@ -329,6 +530,30 @@ const loginstyles = StyleSheet.create({
   create : {
     fontSize: 16,
     fontFamily: 'ubuntuMedium',
-    color: colors.secondaryOp
+    color: colors.secondaryOp,
   }
 });
+
+const Stack = createStackNavigator();
+
+export default class App extends React.Component {
+
+  constructor(props){
+    super(props)
+
+    console.disableYellowBox = true
+  }
+
+  render(){
+
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{headerShown: false}}> 
+          <Stack.Screen name="Login" component={LoginScreen}/>
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );  
+  }
+}
