@@ -96,7 +96,6 @@ class SignUpScreen extends React.Component {
   }
 
   _handleConfirm(date){
-    console.log(date)
 
      var time = date.getTime()
 
@@ -384,12 +383,15 @@ class HomeScreen extends React.Component {
     products: [],
     fullProducst: [],
     searchInput: '',
+    refresh: false
   }
 
   constructor(props){
     super(props)
 
     this.handleSearch = this.handleSearch.bind(this)
+    this.onRefresh = this.onRefresh.bind(this)
+    this.getList = this.getList.bind(this)
   }
 
 
@@ -432,32 +434,74 @@ class HomeScreen extends React.Component {
             refThis.setState({
               nameUser: nameNow[0]
             })
-          }
+          } 
+
+          
         })   
       } else {
         refThis.props.navigation.navigate('Login')
       }
     })
 
+
+
+    this.getList()
+  }
+
+  getList(){
+
+    var refThis = this
+
     var refList = firebase.database().ref('products')
-    refList.on('value', function(snapshot){
+    refList.once('value', function(snapshot){
       var value = snapshot.val()
       var array = []
 
       for (variavel in value) {
         var valueNow = value[variavel]
-        console.log(valueNow)
+        valueNow.key = variavel
+        valueNow.star = false
         array.push(valueNow)
+      }
+
+      var user = firebase.auth().currentUser
+
+      if(user){
+        var refData = firebase.database().ref('users/' + user.uid + '/profile/favorites')
+        refData.on('value', function(snapshot){
+          var favo = snapshot.val()
+
+          for(variavel in array){
+                var produ = array[variavel]
+                array[variavel].star = false
+              }
+
+          if(favo){
+            for (variavel in favo) {
+              var key = variavel
+              console.log('Key : ' + key)
+              // console.log(array)
+              for(variavel in array){
+                var produ = array[variavel]
+                if(produ.key === key){
+                  array[variavel].star = true
+                }
+              }
+            }
+          }
+        })
       }
 
       refThis.setState({
         products: array,
-        fullProducst: array
+        fullProducst: array,
+        refresh: false,
       })
     })
   }
 
   handleSearch(text){
+
     const formatQuery = text.toLowerCase();
 
     const fullData = this.state.fullProducst
@@ -485,23 +529,48 @@ class HomeScreen extends React.Component {
       });
   }
 
+  onRefresh(){
+
+    this.setState({
+      refresh: true,
+      products: [],
+    })
+
+    this.getList()
+  }
+
+  star(product){
+
+    var user = firebase.auth().currentUser
+
+    if(!product.star){
+      if(user){
+        var productStar = firebase.database().ref('users/' + user.uid + '/profile/favorites/'+ product.key)
+        productStar.set('true')
+      }
+    } else {
+      var productStar = firebase.database().ref('users/' + user.uid + '/profile/favorites/' + product.key)
+      productStar.remove()
+    }
+  }
+
 
   render(){
 
-    var { nameUser, fontLoaded, products, searchInput } =  this.state
+    var { nameUser, fontLoaded, products, searchInput, refresh } =  this.state
 
     return (
-    <ScrollView contentContainerStyle={homestyles.container} keyboardShouldPersistTaps='handled'>
+    <ScrollView contentContainerStyle={homestyles.container} keyboardShouldPersistTaps='handled' scrollEnabled={false}>
       <View style={homestyles.view}>
         <StatusBar style="dark" />
         <View style={homestyles.header}>
           {fontLoaded ? (<Text style={homestyles.title}>Olá, {nameUser}</Text>): null}
-          <Icon name="user" color={colors.white} size={24}/> 
+          <Icon name="user" color={colors.white} size={20}/> 
         </View>
         {fontLoaded ? (<Text style={homestyles.search}>Produtos</Text>): null}
         {fontLoaded ? (
             <View style={homestyles.searchView}>
-              <Icon name="search" color={colors.secondary} size={24}/> 
+              <Icon name="search" color={colors.secondary} size={20}/> 
               <TextInput
                 ref={(input) => { this.senha = input}}
                 keyboardType="default"
@@ -526,7 +595,9 @@ class HomeScreen extends React.Component {
             ) : null}
         <FlatList
           data={products}
+          onRefresh={() => this.onRefresh()}
           style={homestyles.list}
+          refreshing={refresh}
           renderItem={({ item }) => (
               <View style={homestyles.cell}>
                   <Image
@@ -539,6 +610,14 @@ class HomeScreen extends React.Component {
                     <Text style={homestyles.cellTitle}>{item.name}</Text>  
                     <Text style={homestyles.cellSubTitle}>{item.desc}</Text>  
                   </View>
+                  <TouchableHighlight onPress={() => this.star(item)} style={homestyles.star}>
+                    {item.star ? (
+                      <Image
+                        source={{uri: 'https://firebasestorage.googleapis.com/v0/b/appshopper-92ab0.appspot.com/o/star.png?alt=media&token=7376b812-59e6-44f0-b070-9755ccedd653'}}
+                        style={{width: 18, height: 18}}
+                        resizeMode='cover'
+                    />):(<Icon name="star" color={'#FAA230'} size={20}/>)}
+                  </TouchableHighlight>
               </View>
           )}
           keyExtractor={item => item.id}
@@ -556,12 +635,15 @@ class HomeScreen extends React.Component {
 }
 
 const homestyles = StyleSheet.create({
-  view : {
+  contaier: {
     height: '100%',
+  },
+  view : {
+    height: '105%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingLeft: 12,
+    paddingRight: 12,
     backgroundColor: colors.background
   },
   header : {
@@ -571,10 +653,7 @@ const homestyles = StyleSheet.create({
     justifyContent: 'space-between',
     flexDirection: 'row',
     backgroundColor: colors.primary,
-    paddingTop: 20,
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingBottom: 20,
+    padding: 16,
     borderRadius: 8,
     marginBottom: 24,
   },
@@ -589,7 +668,8 @@ const homestyles = StyleSheet.create({
     textAlign: 'left',
     alignSelf: 'stretch',
     fontFamily: 'ubuntuMedium',
-    marginLeft: 6
+    marginLeft: 6,
+    marginBottom: 6
   },
   list: {
     width: '100%',
@@ -602,14 +682,16 @@ const homestyles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 6,
     padding: 14,
-    paddingBottom: 18
+    paddingBottom: 18,
+    justifyContent: 'space-between',
+    alignItems: 'center'
   },
   imageCell : {
     width: 70,
     height: 70
   },
   cellText : {
-    marginLeft: 16,
+    marginLeft: 2,
     alignItems: 'flex-start',
     marginTop: 4,
     width: '60%'
@@ -649,7 +731,13 @@ const homestyles = StyleSheet.create({
     height: 84,
     position: 'absolute',
     zIndex: -1,
-    bottom: 20,
+    bottom: 10,
+  },
+  star : {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 })
 
