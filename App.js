@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import * as Font from 'expo-font'
-import { StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView } from 'react-native'
+import { StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView, FlatList } from 'react-native'
 import Icon from 'react-native-vector-icons/Feather'
 
 import { NavigationContainer } from '@react-navigation/native'
@@ -13,6 +13,8 @@ import Toast, {DURATION} from 'react-native-easy-toast'
 import DateTimePickerModal from "react-native-modal-datetime-picker"
 
 import firebase from 'firebase'
+
+import _ from 'lodash'
 
 var firebaseConfig = {
     apiKey: "AIzaSyCaMf5vapFrgFUslZmz5BIIF1LL3NrNUEI",
@@ -36,7 +38,8 @@ var colors = {
   primary: '#1EA7DB',
   secondary: '#3E4148',
   secondaryOp: 'rgba(62, 65, 72, 0.6)',
-  white: '#FFF'
+  white: '#FFF',
+  background: '#E7ECFA'
 }
 
 function checkError(code){
@@ -377,11 +380,16 @@ class HomeScreen extends React.Component {
   state = {
     fontLoaded: false,
     nameUser: '',
-    userInfo: null
+    userInfo: null,
+    products: [],
+    fullProducst: [],
+    searchInput: '',
   }
 
   constructor(props){
     super(props)
+
+    this.handleSearch = this.handleSearch.bind(this)
   }
 
 
@@ -395,6 +403,14 @@ class HomeScreen extends React.Component {
       this.setState({
           fontLoaded: true,
       })
+
+      // Adicionando Produtos
+      // var refBase =  firebase.database().ref('products').push()
+      // refBase.set({
+      //   name: 'Laranja',
+      //   photo: 'https://firebasestorage.googleapis.com/v0/b/appshopper-92ab0.appspot.com/o/Laranja.png?alt=media&token=bfad6156-c39e-4917-8683-edf197a54c25',
+      //   desc: 'Melhor  do que essa tu nao encontra em lugar nenhum'
+      // })
   }
 
 
@@ -406,9 +422,9 @@ class HomeScreen extends React.Component {
       if (user) {
         // User is signed in.
         var refUser = firebase.database().ref('users/' + user.uid + '/profile') 
-        refUser.once('value', function(snapshot){
+        refUser.on('value', function(snapshot){
           var value = snapshot.val()
-          console.log(value)
+
           if(value){
             var name = value.name
             var nameNow = name.split(' ')
@@ -423,30 +439,118 @@ class HomeScreen extends React.Component {
       }
     })
 
-    
+    var refList = firebase.database().ref('products')
+    refList.on('value', function(snapshot){
+      var value = snapshot.val()
+      var array = []
+
+      for (variavel in value) {
+        var valueNow = value[variavel]
+        console.log(valueNow)
+        array.push(valueNow)
+      }
+
+      refThis.setState({
+        products: array,
+        fullProducst: array
+      })
+    })
+  }
+
+  handleSearch(text){
+    const formatQuery = text.toLowerCase();
+
+    const fullData = this.state.fullProducst
+
+    const data = _.filter(fullData, objeto => {
+
+      var name = objeto.name.toLowerCase();
+
+      if(name.includes(formatQuery)){
+        return true
+      } 
+      return false
+    })
+
+    this.setState({
+      products: data
+    })
+  }
+
+  logout(){
+     firebase.auth().signOut().then(function() {
+        // Sign-out successful.
+      }).catch(function(error) {
+        // An error happened.
+      });
   }
 
 
   render(){
 
-    var { nameUser, fontLoaded } =  this.state
+    var { nameUser, fontLoaded, products, searchInput } =  this.state
 
     return (
+    <ScrollView contentContainerStyle={homestyles.container} keyboardShouldPersistTaps='handled'>
       <View style={homestyles.view}>
         <StatusBar style="dark" />
         <View style={homestyles.header}>
           {fontLoaded ? (<Text style={homestyles.title}>Olá, {nameUser}</Text>): null}
           <Icon name="user" color={colors.white} size={24}/> 
         </View>
-        <Button title="Go back" onPress={() => this.props.navigation.goBack()} />
-        <Button title="Logout" onPress={() => {
-          firebase.auth().signOut().then(function() {
-          // Sign-out successful.
-        }).catch(function(error) {
-          // An error happened.
-        });
-        }} />
+        {fontLoaded ? (<Text style={homestyles.search}>Produtos</Text>): null}
+        {fontLoaded ? (
+            <View style={homestyles.searchView}>
+              <Icon name="search" color={colors.secondary} size={24}/> 
+              <TextInput
+                ref={(input) => { this.senha = input}}
+                keyboardType="default"
+                autoCapitalize='none'
+                underlineColorAndroid="transparent"
+                onChangeText={(text) => {
+                  this.handleSearch(text)
+                  this.setState({searchInput: text})
+                }}
+                style={homestyles.input}
+                textAlignVertical='top'
+                value={searchInput}
+                editable={true}
+                paddingLeft={8}
+                placeholder="Buscar..."
+                placeholderTextColor={colors.secondaryOp}
+                keyboardAppearance="dark"
+                onSubmitEditing={() => { this._signUp() }}
+                blurOnSubmit={false}
+            />
+          </View>
+            ) : null}
+        <FlatList
+          data={products}
+          style={homestyles.list}
+          renderItem={({ item }) => (
+              <View style={homestyles.cell}>
+                  <Image
+                      source={{uri: item.photo}}
+                      style={homestyles.imageCell}
+                      resizeMode='cover'
+                      borderRadius={8}
+                  />
+                  <View style={homestyles.cellText}>
+                    <Text style={homestyles.cellTitle}>{item.name}</Text>  
+                    <Text style={homestyles.cellSubTitle}>{item.desc}</Text>  
+                  </View>
+              </View>
+          )}
+          keyExtractor={item => item.id}
+        /> 
+        <Image
+            source={{uri: 'https://firebasestorage.googleapis.com/v0/b/appshopper-92ab0.appspot.com/o/background.png?alt=media&token=7e0f4ee2-c17b-45fa-9067-b1f7bddd811c'}}
+            style={homestyles.background}
+            resizeMode='cover'
+            borderRadius={8}
+        />
       </View>
+      </ScrollView>
     )
   }
 }
@@ -456,8 +560,9 @@ const homestyles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingLeft: 20,
-    paddingRight: 20,
+    paddingLeft: 16,
+    paddingRight: 16,
+    backgroundColor: colors.background
   },
   header : {
     marginTop: 40,
@@ -477,6 +582,74 @@ const homestyles = StyleSheet.create({
     fontSize: 18,
     color: colors.white,
     fontFamily: 'ubuntuMedium',
+  },
+  search : {
+    fontSize: 18,
+    color: colors.secondary,
+    textAlign: 'left',
+    alignSelf: 'stretch',
+    fontFamily: 'ubuntuMedium',
+    marginLeft: 6
+  },
+  list: {
+    width: '100%',
+    paddingBottom: 80
+  },
+  cell: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: colors.white,
+    marginTop: 12,
+    borderRadius: 6,
+    padding: 14,
+    paddingBottom: 18
+  },
+  imageCell : {
+    width: 70,
+    height: 70
+  },
+  cellText : {
+    marginLeft: 16,
+    alignItems: 'flex-start',
+    marginTop: 4,
+    width: '60%'
+  },
+  cellTitle : {
+    fontSize: 16,
+    color: colors.secondary,
+    fontFamily: 'ubuntuMedium'
+  },
+  cellSubTitle: {
+    fontSize: 12,
+    color: colors.secondary,
+    opacity: 0.6,
+    fontFamily: 'ubuntuMedium',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  searchView : {
+    backgroundColor: colors.white,
+    width: '100%',
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 6,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  input : {
+    color: colors.secondary,
+    marginLeft: 8,
+    fontSize: 16,
+    color: colors.secondary,
+    fontFamily: 'ubuntuMedium',
+    paddingLeft: 18
+  },
+  background: {
+    width: 185,
+    height: 84,
+    position: 'absolute',
+    zIndex: -1,
+    bottom: 20,
   }
 })
 
