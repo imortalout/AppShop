@@ -39,22 +39,45 @@ var colors = {
   white: '#FFF'
 }
 
+function checkError(code){
+    switch(code) {
+      case 'auth/email-already-in-use':
+        return 'Email está em Uso'
+        break;
+      case 'auth/invalid-email':
+        return 'Email Mal Formatado'
+        break;
+      case 'auth/weak-password':
+        return 'Senha Fraca'  
+        break;
+      case 'auth/wrong-password':
+        return 'Errou a Senha'
+      case 'auth/user-not-found':
+        return 'Email não Encontrado'
+      default:
+        return 'Algo Deu Errado!'
+    }
+}
+
 
 class SignUpScreen extends React.Component {
+
+  state = {
+    fontLoaded: false,
+    loading: false,
+    date: false,
+    dateText: 'DATA DE NASCIMENTO',
+    time: null,
+    loading: false,
+  }
 
   constructor(props){
     super(props)
 
     this._handleConfirm = this._handleConfirm.bind(this)
     this._hideDate = this._hideDate.bind(this)
-    this.openDate = this.openDate.bind(this)
-  }
-
-  state = {
-    fontLoaded: false,
-    loading: false,
-    date: false,
-    dateText: 'DATA DE NASCIMENTO'
+    this._openDate = this._openDate.bind(this)
+    this._signUp = this._signUp.bind(this)
   }
 
    async componentWillMount() {
@@ -93,13 +116,12 @@ class SignUpScreen extends React.Component {
     }
 
     var timeShow = timeConverter(time)
-
-    console.log(timeShow)
     
 
     this.setState({
         date: false,
         dateText: timeShow,
+        time: time
     })
   }
 
@@ -109,18 +131,67 @@ class SignUpScreen extends React.Component {
     })
   }
 
-  openDate(){
+  _openDate(){
     this.setState({
         date: true
     })
   }
 
+  _signUp(){
+
+    var { emailInput, passwordInput, nameInput, time } = this.state
+
+    this.setState({loading: true})
+
+    var refThis = this
+
+    if(nameInput != null && emailInput != null && passwordInput != null || time != null ){
+      firebase.auth().createUserWithEmailAndPassword(emailInput, passwordInput).then(function(user) {
+
+          refThis.refs.toast.show('Criado com Sucesso!')
+          refThis.setState({loading: false})
+
+          firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+              // User is signed in.
+              var refBase = firebase.database().ref('users/' + user.uid + '/profile')
+              user.updateProfile({
+                  displayName: nameInput,
+                }).then(function(){
+                refBase.set({
+                  name: nameInput,
+                  email: emailInput,
+                  date: time
+                }).then(function() {
+                  refThis.props.navigation.navigate('Home')
+                })
+              })
+            }
+          })
+      }, function(error) {
+          // Handle Errors here.
+          var errorCode = error.code;
+          var errorMessage = error.message;
+
+          var error = checkError(errorCode)
+
+          refThis.refs.toast.show(error)
+          refThis.setState({
+              animeSign: false
+          })
+      })
+    } else {
+
+    }
+  }
+
   render(){
 
-    var  { fontLoaded, date, emailInput, passwordInput, nameInput, dateText } =  this.state
+    var  { fontLoaded, date, emailInput, passwordInput, nameInput, dateText, loading } =  this.state
 
     return (
       <ScrollView contentContainerStyle={signstyles.view} keyboardShouldPersistTaps='handled'>
+        <StatusBar style="dark" />
         <View style={signstyles.header}>
           <TouchableHighlight onPress={() => this.props.navigation.goBack()} style={signstyles.buttonBack}>
             <Icon name="chevron-left" color={colors.secondary} size={30}/> 
@@ -144,10 +215,14 @@ class SignUpScreen extends React.Component {
             placeholder="NOME"
             placeholderTextColor={colors.white}
             keyboardAppearance="dark"
-            onSubmitEditing={() => { this.email.focus(); }}
+            onSubmitEditing={() => { this.setState({date: true}) }}
             blurOnSubmit={false}
           />
             ) : null}
+           <View style={signstyles.separator}></View>
+           <TouchableHighlight onPress={() => this._openDate()}>
+            <Text style={signstyles.date} >{dateText}</Text>
+          </TouchableHighlight>
           <View style={signstyles.separator}></View>
           {fontLoaded ? (
             <TextInput
@@ -188,15 +263,11 @@ class SignUpScreen extends React.Component {
             placeholder="SENHA"
             placeholderTextColor={colors.white}
             keyboardAppearance="dark"
-            onSubmitEditing={() => { this.openDate(); }}
+            onSubmitEditing={() => { this._signUp() }}
             blurOnSubmit={false}
             secureTextEntry={true}
           />
             ) : null}
-          <View style={signstyles.separator}></View>
-          <TouchableHighlight onPress={() => this.openDate()}>
-            <Text style={signstyles.date} >{dateText}</Text>
-          </TouchableHighlight>
           <View style={signstyles.separator}></View>
           <DateTimePickerModal
                 isVisible={date}
@@ -207,6 +278,25 @@ class SignUpScreen extends React.Component {
                 confirmTextIOS="Confirmar"
                 cancelTextIOS="Cancelar"
               />
+              <View style={loginstyles.viewButton}>
+            {fontLoaded ? (<Text style={signstyles.loginText}>Inscrever-se</Text>) : null }
+            <TouchableHighlight style={signstyles.buttonLogin} onPress={() => this._signUp()}>
+              <Icon name="arrow-right" color={colors.secondary} size={24}/> 
+            </TouchableHighlight>
+            <Spinner
+              visible={loading}
+            /> 
+            <Toast 
+              ref="toast"
+              style={{backgroundColor:'#000', zIndex: 10}}
+              position='top'
+              positionValue={200}
+              fadeInDuration={1750}
+              fadeOutDuration={1500}
+              opacity={0.8}
+              textStyle={{color: '#FFF'}}
+              />
+          </View>
         </View>
       </ScrollView>
     )
@@ -265,19 +355,130 @@ const signstyles = StyleSheet.create({
     paddingTop: 8,
     marginTop: 20,
     paddingBottom: 18,
-  }
+  },
+  loginText : {
+    fontSize: 26,
+    marginLeft: 6,
+    fontFamily: 'ubuntuMedium',
+    color: colors.white 
+  },
+  buttonLogin : {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 30
+  },
 })
 
 class HomeScreen extends React.Component {
+
+  state = {
+    fontLoaded: false,
+    nameUser: '',
+    userInfo: null
+  }
+
+  constructor(props){
+    super(props)
+  }
+
+
+  async componentWillMount() {
+
+      await Font.loadAsync({
+          'ubuntuMedium': require('./assets/fonts/Ubuntu-Medium.ttf'),
+          'ubuntuRegular': require('./assets/fonts/Ubuntu-Regular.ttf'),
+      })
+
+      this.setState({
+          fontLoaded: true,
+      })
+  }
+
+
+  componentDidMount(){
+
+    var refThis = this
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // User is signed in.
+        var refUser = firebase.database().ref('users/' + user.uid + '/profile') 
+        refUser.once('value', function(snapshot){
+          var value = snapshot.val()
+          console.log(value)
+          if(value){
+            var name = value.name
+            var nameNow = name.split(' ')
+
+            refThis.setState({
+              nameUser: nameNow[0]
+            })
+          }
+        })   
+      } else {
+        refThis.props.navigation.navigate('Login')
+      }
+    })
+
+    
+  }
+
+
   render(){
+
+    var { nameUser, fontLoaded } =  this.state
+
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text>HomeScreen</Text>
+      <View style={homestyles.view}>
+        <StatusBar style="dark" />
+        <View style={homestyles.header}>
+          {fontLoaded ? (<Text style={homestyles.title}>Olá, {nameUser}</Text>): null}
+          <Icon name="user" color={colors.white} size={24}/> 
+        </View>
         <Button title="Go back" onPress={() => this.props.navigation.goBack()} />
+        <Button title="Logout" onPress={() => {
+          firebase.auth().signOut().then(function() {
+          // Sign-out successful.
+        }).catch(function(error) {
+          // An error happened.
+        });
+        }} />
       </View>
     )
   }
 }
+
+const homestyles = StyleSheet.create({
+  view : {
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingLeft: 20,
+    paddingRight: 20,
+  },
+  header : {
+    marginTop: 40,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    paddingTop: 20,
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingBottom: 20,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 18,
+    color: colors.white,
+    fontFamily: 'ubuntuMedium',
+  }
+})
 
 
 class LoginScreen extends React.Component {
@@ -291,6 +492,18 @@ class LoginScreen extends React.Component {
   state = {
     fontLoaded: false,
     loading: false,
+  }
+
+  componentDidMount(){
+
+    var refThis = this
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // User is signed in.
+         refThis.props.navigation.navigate('Home')
+      }
+    })
   }
 
    async componentWillMount() {
@@ -317,14 +530,14 @@ class LoginScreen extends React.Component {
     .then(function(result) {
 
         refThis.refs.toast.show('Logado com Sucesso') 
-        refThis.props.navigation.navigate('Home')
         refThis.setState({loading: false})
+        refThis.props.navigation.navigate('Home')
     
     }).catch(function(error) {
         var errorCode = error.code
         var errorMessage = error.message  
 
-        var error = refThis.checkError(errorCode)
+        var error = checkError(errorCode)
 
         refThis.refs.toast.show(error)   
 
@@ -334,25 +547,7 @@ class LoginScreen extends React.Component {
     })
   }
 
-  checkError(code){
-      switch(code) {
-        case 'auth/email-already-in-use':
-          return 'Email está em Uso'
-          break;
-        case 'auth/invalid-email':
-          return 'Email Mal Formatado'
-          break;
-        case 'auth/weak-password':
-          return 'Senha Fraca'  
-          break;
-        case 'auth/wrong-password':
-          return 'Errou a Senha'
-        case 'auth/user-not-found':
-          return 'Email não Encontrado'
-        default:
-          return 'Algo Deu Errado!'
-      }
-  }
+  
 
   render(){
 
@@ -360,7 +555,7 @@ class LoginScreen extends React.Component {
 
     return(
     <ScrollView contentContainerStyle={loginstyles.container} keyboardShouldPersistTaps='handled'>
-        <StatusBar style="auto" />
+        <StatusBar style="light" />
         <KeyboardAvoidingView
             behavior={Platform.OS == "ios" ? "padding" : "height"}
             style={loginstyles.keyboard}
@@ -543,6 +738,7 @@ export default class App extends React.Component {
 
     console.disableYellowBox = true
   }
+
 
   render(){
 
