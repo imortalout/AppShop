@@ -738,6 +738,7 @@ class HomeScreen extends React.Component {
     this.onRefresh = this.onRefresh.bind(this)
     this.getList = this.getList.bind(this)
     this.switchFavo = this.switchFavo.bind(this)
+    this.logout = this.logout.bind(this)
   }
 
 
@@ -782,8 +783,6 @@ class HomeScreen extends React.Component {
             })
           } 
         })   
-      } else {
-        refThis.props.navigation.navigate('Login')
       }
     })
 
@@ -879,6 +878,7 @@ class HomeScreen extends React.Component {
   logout(){
      firebase.auth().signOut().then(function() {
         // Sign-out successful.
+        refThis.props.navigation.navigate('Login')
       }).catch(function(error) {
         // An error happened.
       });
