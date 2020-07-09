@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import * as Font from 'expo-font'
-import { StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView, FlatList } from 'react-native'
+import { Dimensions, StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView, FlatList } from 'react-native'
 import Icon from 'react-native-vector-icons/Feather'
 
 import { NavigationContainer } from '@react-navigation/native'
@@ -30,6 +30,9 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig)
 }
 
+const windowWidth = Dimensions.get('window').width;
+const windowHeight = Dimensions.get('window').height;
+
 // Login Teste
 // teste@teste.com[Email]
 // 123456789[Senha]
@@ -39,7 +42,8 @@ var colors = {
   secondary: '#3E4148',
   secondaryOp: 'rgba(62, 65, 72, 0.6)',
   white: '#FFF',
-  background: '#E7ECFA'
+  background: '#E7ECFA',
+  alert: '#E71515'
 }
 
 function checkError(code){
@@ -61,6 +65,371 @@ function checkError(code){
         return 'Algo Deu Errado!'
     }
 }
+
+function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp)
+  var year = a.getFullYear()
+  var month = a.getMonth()
+  var date = a.getDate()
+  month = month + 1
+
+  if(date < 10){
+    date = '0' + date 
+  }
+  if(month < 10){
+    month = '0' + month 
+  }
+
+  var time = date + '/' + month + '/' + year 
+  return time;
+}
+
+class PerfilScreen extends React.Component {
+
+  state = {
+    fontLoaded: false,
+    loading: false,
+    date: false,
+    dateText: 'DATA DE NASCIMENTO',
+    time: null,
+    loading: false,
+  }
+
+  constructor(props){
+    super(props)
+
+    this.handleConfirm = this.handleConfirm.bind(this)
+    this.hideDate = this.hideDate.bind(this)
+    this.openDate = this.openDate.bind(this)
+    this.signUp = this.signUp.bind(this)
+  }
+
+   async componentWillMount() {
+
+      await Font.loadAsync({
+          'ubuntuMedium': require('./assets/fonts/Ubuntu-Medium.ttf'),
+          'ubuntuRegular': require('./assets/fonts/Ubuntu-Regular.ttf'),
+      })
+
+      this.setState({
+          fontLoaded: true,
+      })
+  }
+
+  componentDidMount(){
+
+    var refThis = this
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if(user){
+        var refProfile = firebase.database().ref('users/' + user.uid +  '/profile')
+        refProfile.once('value', function(snapshot){
+          var value = snapshot.val()
+
+          if(value){
+            console.log(value)
+
+            var timeShow = timeConverter(value.date)
+
+            console.log(timeShow)
+
+            refThis.setState({
+              emailInput: value.email,
+              nameInput: value.name,
+              dateText: timeShow
+            })
+          } 
+        })
+      } else {
+        refThis.props.navigation.navigate('Login')
+      }
+    })
+  }
+
+  handleConfirm(date){
+
+    var time = date.getTime()
+    var timeShow = timeConverter(time)
+    
+
+    this.setState({
+        date: false,
+        dateText: timeShow,
+        time: time
+    })
+  }
+
+  hideDate(){
+    this.setState({date: false})
+  }
+
+  openDate(){
+    this.setState({date: true})
+  }
+
+  signUp(){
+
+    var { emailInput, passwordInput, nameInput, time } = this.state
+
+    this.setState({loading: true})
+
+    var refThis = this
+
+    if(nameInput != null && emailInput != null && passwordInput != null || time != null ){
+      firebase.auth().createUserWithEmailAndPassword(emailInput, passwordInput).then(function(user) {
+
+          refThis.refs.toast.show('Criado com Sucesso!')
+          refThis.setState({loading: false})
+
+          firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+              // User is signed in.
+              var refBase = firebase.database().ref('users/' + user.uid + '/profile')
+              user.updateProfile({
+                  displayName: nameInput,
+                }).then(function(){
+                refBase.set({
+                  name: nameInput,
+                  email: emailInput,
+                  date: time
+                }).then(function() {
+                  refThis.props.navigation.navigate('Home')
+                })
+              })
+            }
+          })
+      }, function(error) {
+          // Handle Errors here.
+          var errorCode = error.code;
+          var errorMessage = error.message;
+
+          var error = checkError(errorCode)
+
+          refThis.refs.toast.show(error)
+          refThis.setState({
+              animeSign: false
+          })
+      })
+    }
+  }
+
+  logout(){
+    firebase.auth().signOut().then(function() {
+        // Sign-out successful.
+      }).catch(function(error) {
+        // An error happened.
+      });
+  }
+
+  render(){
+
+    var  { fontLoaded, date, emailInput, passwordInput, nameInput, dateText, loading } =  this.state
+
+    return (
+      <ScrollView contentContainerStyle={perfilstyles.view} keyboardShouldPersistTaps='handled'>
+        <StatusBar style="light" />
+        <View style={perfilstyles.header}>
+          <TouchableHighlight onPress={() => this.props.navigation.goBack()} style={perfilstyles.buttonBack}>
+            <Icon name="chevron-left" color={colors.white} size={30}/> 
+          </TouchableHighlight>
+          {fontLoaded ? (<Text style={perfilstyles.title}>Perfil</Text>) : null }
+        </View>
+        <View style={perfilstyles.form}>
+           {fontLoaded ? (
+            <TextInput
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({nameInput: text})
+            }}
+            style={perfilstyles.input}
+            textAlignVertical='top'
+            value={nameInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="NOME"
+            placeholderTextColor={colors.secondaryOp}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.setState({date: true}) }}
+            blurOnSubmit={false}
+          />
+            ) : null}
+           <View style={perfilstyles.separator}></View>
+           <TouchableHighlight onPress={() => this.openDate()}>
+            <Text style={perfilstyles.date} >{dateText}</Text>
+          </TouchableHighlight>
+          <View style={perfilstyles.separator}></View>
+          {fontLoaded ? (
+            <TextInput
+            ref={(input) => { this.email = input}}
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({emailInput: text})
+            }}
+            style={perfilstyles.input}
+            textAlignVertical='top'
+            value={emailInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="EMAIL"
+            placeholderTextColor={colors.secondaryOp}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.senha.focus(); }}
+            blurOnSubmit={false}
+          />
+            ) : null}
+          <View style={perfilstyles.separator}></View>
+          {fontLoaded ? (
+            <TextInput
+            ref={(input) => { this.senha = input}}
+            keyboardType="default"
+            autoCapitalize='none'
+            underlineColorAndroid="transparent"
+            onChangeText={(text) => {
+              this.setState({passwordInput: text})
+            }}
+            style={perfilstyles.input}
+            textAlignVertical='top'
+            value={passwordInput}
+            editable={true}
+            paddingLeft={8}
+            placeholder="SENHA"
+            placeholderTextColor={colors.secondaryOp}
+            keyboardAppearance="dark"
+            onSubmitEditing={() => { this.signUp() }}
+            blurOnSubmit={false}
+            secureTextEntry={true}
+          />
+            ) : null}
+          <View style={perfilstyles.separator}></View>
+          <DateTimePickerModal
+                isVisible={date}
+                mode="date"
+                onConfirm={this.handleConfirm}
+                onCancel={this.hideDate}
+                headerTextIOS="Escolha as Horas"
+                confirmTextIOS="Confirmar"
+                cancelTextIOS="Cancelar"
+              />
+              <View style={loginstyles.viewButton}>
+            <View style={perfilstyles.optionsBottom}>
+              {fontLoaded ? (<Text style={perfilstyles.loginText}>Salvar</Text>) : null }
+              <TouchableHighlight style={perfilstyles.buttonLogin} onPress={() => this.signUp()}>
+                <Icon name="save" color={colors.white} size={24}/> 
+              </TouchableHighlight>
+            </View>
+          </View>
+          <TouchableHighlight style={perfilstyles.leaveButton} onPress={() => this.logout()}>
+              <Text style={perfilstyles.leave}>Sair</Text> 
+          </TouchableHighlight>
+          <Spinner
+              visible={loading}
+            /> 
+            <Toast 
+              ref="toast"
+              style={{backgroundColor:'#000', zIndex: 10}}
+              position='top'
+              positionValue={200}
+              fadeInDuration={1750}
+              fadeOutDuration={1500}
+              opacity={0.8}
+              textStyle={{color: '#FFF'}}
+              />
+        </View>
+      </ScrollView>
+    )
+  }
+}
+
+const perfilstyles = StyleSheet.create({
+  view: {
+    width: '100%',
+    backgroundColor: colors.white,
+    height: '100%',
+  },
+  header: {
+    paddingTop: 40,
+    paddingLeft: 20,
+    paddingBottom: 30,
+    backgroundColor: colors.primary
+  },
+  buttonBack : {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  title: {
+    fontSize: 24,
+    color: colors.white,
+    marginTop: 20,
+    fontFamily: 'ubuntuMedium',
+  },
+  form: {
+    width: '100%',
+    paddingTop: 20,
+    paddingBottom: 60,
+    paddingLeft: 20,
+    paddingRight: 20
+  },
+  input : {
+    color: colors.secondary,
+    fontFamily: 'ubuntuMedium', 
+    fontSize: 16,
+    paddingTop: 8,
+    marginTop: 20,
+    paddingBottom: 18,
+  },
+  separator : {
+    width: '100%',
+    height: 1,
+    backgroundColor: colors.secondaryOp
+  },
+  date : {
+    color: colors.secondary,
+    fontFamily: 'ubuntuMedium', 
+    fontSize: 16,
+    marginLeft: 4,
+    paddingTop: 8,
+    marginTop: 20,
+    paddingBottom: 18,
+  },
+  loginText : {
+    fontSize: 26,
+    marginLeft: 6,
+    fontFamily: 'ubuntuMedium',
+    color: colors.secondary 
+  },
+  buttonLogin : {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 30
+  },
+  leaveButton : {
+    marginTop: 30,
+    alignItems: 'flex-start'
+  },
+  leave : {
+    color: 'red',
+    fontSize: 20,
+    marginLeft: 4,
+    textAlign: 'left',
+    alignSelf: 'stretch',
+    fontFamily: 'ubuntuMedium'
+  },
+  optionsBottom : {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  }
+})
 
 
 class SignUpScreen extends React.Component {
@@ -97,26 +466,7 @@ class SignUpScreen extends React.Component {
 
   handleConfirm(date){
 
-     var time = date.getTime()
-
-     function timeConverter(UNIX_timestamp){
-      var a = new Date(UNIX_timestamp)
-      var year = a.getFullYear()
-      var month = a.getMonth()
-      var date = a.getDate()
-      month = month + 1
-
-      if(date < 10){
-        date = '0' + date 
-      }
-      if(month < 10){
-        month = '0' + month 
-      }
-
-      var time = date + '/' + month + '/' + year 
-      return time;
-    }
-
+    var time = date.getTime()
     var timeShow = timeConverter(time)
     
 
@@ -577,7 +927,9 @@ class HomeScreen extends React.Component {
         <StatusBar style="dark" />
         <View style={homestyles.header}>
           {fontLoaded ? (<Text style={homestyles.title}>Olá, {nameUser}</Text>): null}
-          <Icon name="user" color={colors.white} size={20}/> 
+          <TouchableHighlight onPress={() => this.props.navigation.navigate('Perfil')} stlye={homestyles.perfil}>
+            <Icon name="user" color={colors.white} size={20}/>   
+          </TouchableHighlight>
         </View>
         <View style={homestyles.optionsView}>
           {fontLoaded ? (<Text style={homestyles.search}>Produtos</Text>): null}  
@@ -662,7 +1014,7 @@ const homestyles = StyleSheet.create({
     height: '100%',
   },
   view : {
-    height: '105%',
+    height: windowHeight,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingLeft: 12,
@@ -684,6 +1036,12 @@ const homestyles = StyleSheet.create({
     fontSize: 18,
     color: colors.white,
     fontFamily: 'ubuntuMedium',
+  },
+  perfil : {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   optionsView : {
     flexDirection: 'row',
@@ -771,18 +1129,18 @@ const homestyles = StyleSheet.create({
     fontFamily: 'ubuntuMedium',
     paddingLeft: 18
   },
-  background: {
-    width: 185,
-    height: 84,
-    position: 'absolute',
-    zIndex: -1,
-    bottom: 10,
-  },
   star : {
     width: 30,
     height: 30,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  background: {
+    width: 185,
+    height: 84,
+    position: 'absolute',
+    zIndex: -1,
+    bottom: 20,
   }
 })
 
@@ -793,6 +1151,7 @@ class LoginScreen extends React.Component {
     super(props)
 
     this.login = this.login.bind(this)
+    this.forgot = this.forgot.bind(this)
   }
 
   state = {
@@ -851,6 +1210,28 @@ class LoginScreen extends React.Component {
             loading: false
         })
     })
+  }
+
+  forgot(){
+    var { emailInput } = this.state
+
+    var refThis = this
+
+    if(emailInput){
+
+      var auth = firebase.auth();
+
+      auth.sendPasswordResetEmail(emailInput).then(function() {
+        refThis.refs.toast.show('Email Enviado') 
+      }).catch(function(error) {
+        // An error happened.
+        var error = checkError(errorCode)
+        refThis.refs.toast.show(error)
+      });
+
+    } else {
+      refThis.refs.toast.show('Escreva seu email no campo') 
+    }
   }
 
   
@@ -933,7 +1314,7 @@ class LoginScreen extends React.Component {
             </TouchableHighlight>
               ) : null }
             {fontLoaded ? (
-            <TouchableHighlight  onPress={() => this.props.navigation.navigate('SignUp')}>
+            <TouchableHighlight  onPress={() => this.forgot()}>
               <Text style={loginstyles.create}>Esqueceu Senha</Text>
             </TouchableHighlight>
               ) : null }
@@ -1054,6 +1435,7 @@ export default class App extends React.Component {
           <Stack.Screen name="Login" component={LoginScreen}/>
           <Stack.Screen name="SignUp" component={SignUpScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Perfil" component={PerfilScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     );  
