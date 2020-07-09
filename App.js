@@ -126,7 +126,9 @@ class PerfilScreen extends React.Component {
 
     var refThis = this
 
-    firebase.auth().onAuthStateChanged(function(user) {
+    var user = firebase.auth().currentUser
+
+    
       if(user){
         var refProfile = firebase.database().ref('users/' + user.uid +  '/profile')
         refProfile.on('value', function(snapshot){
@@ -147,10 +149,15 @@ class PerfilScreen extends React.Component {
             })
           } 
         })
-      } else {
+      }
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if(!user){
         refThis.props.navigation.navigate('Login')
       }
     })
+
+
   }
 
   handleConfirm(date){
@@ -221,7 +228,7 @@ class PerfilScreen extends React.Component {
 
   logout(){
     firebase.auth().signOut().then(function() {
-        // Sign-out successful.
+        refThis.props.navigation.navigate('Login')
       }).catch(function(error) {
         // An error happened.
       });
@@ -844,24 +851,25 @@ class HomeScreen extends React.Component {
 
     var refThis = this
 
-    firebase.auth().onAuthStateChanged(function(user) {
-      if (user) {
-        // User is signed in.
-        var refUser = firebase.database().ref('users/' + user.uid + '/profile') 
-        refUser.on('value', function(snapshot){
-          var value = snapshot.val()
+    var user = firebase.auth().currentUser
+    
+    if (user) {
+      // User is signed in.
+      var refUser = firebase.database().ref('users/' + user.uid + '/profile') 
+      refUser.on('value', function(snapshot){
+        var value = snapshot.val()
 
-          if(value){
-            var name = value.name
-            var nameNow = name.split(' ')
+        if(value){
+          var name = value.name
+          var nameNow = name.split(' ')
 
-            refThis.setState({
-              nameUser: nameNow[0]
-            })
-          } 
-        })   
-      }
-    })
+          refThis.setState({
+            nameUser: nameNow[0]
+          })
+        } 
+      })   
+    }
+
 
     // refThis.getProductsOff()
     
@@ -998,6 +1006,8 @@ class HomeScreen extends React.Component {
   }
 
   logout(){
+
+      console.log('called')
      firebase.auth().signOut().then(function() {
         // Sign-out successful.
         refThis.props.navigation.navigate('Login')
@@ -1347,6 +1357,8 @@ class LoginScreen extends React.Component {
         refThis.refs.toast.show('Email Enviado') 
       }).catch(function(error) {
         // An error happened.
+        var errorCode = error.code
+        var errorMessage = error.message  
         var error = checkError(errorCode)
         refThis.refs.toast.show(error)
       });
