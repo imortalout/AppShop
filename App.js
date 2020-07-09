@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar'
 import React from 'react'
 import * as Font from 'expo-font'
-import { Dimensions, StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView, FlatList } from 'react-native'
+import { Dimensions, StyleSheet, Text, View, Image, TextInput, TouchableHighlight, Button, KeyboardAvoidingView, ScrollView, FlatList, AsyncStorage } from 'react-native'
 import Icon from 'react-native-vector-icons/Feather'
 
 import { NavigationContainer } from '@react-navigation/native'
@@ -61,6 +61,8 @@ function checkError(code){
         return 'Errou a Senha'
       case 'auth/user-not-found':
         return 'Email não Encontrado'
+      case 'auth/requires-recent-login':
+        return 'Precisa Fazer Login'
       default:
         return 'Algo Deu Errado!'
     }
@@ -93,6 +95,9 @@ class PerfilScreen extends React.Component {
     dateText: 'DATA DE NASCIMENTO',
     time: null,
     loading: false,
+    nameNow: '',
+    timeNow: '',
+    emailNow: '',
   }
 
   constructor(props){
@@ -102,6 +107,7 @@ class PerfilScreen extends React.Component {
     this.hideDate = this.hideDate.bind(this)
     this.openDate = this.openDate.bind(this)
     this.signUp = this.signUp.bind(this)
+    this.save = this.save.bind(this)
   }
 
    async componentWillMount() {
@@ -123,7 +129,7 @@ class PerfilScreen extends React.Component {
     firebase.auth().onAuthStateChanged(function(user) {
       if(user){
         var refProfile = firebase.database().ref('users/' + user.uid +  '/profile')
-        refProfile.once('value', function(snapshot){
+        refProfile.on('value', function(snapshot){
           var value = snapshot.val()
 
           if(value){
@@ -136,7 +142,11 @@ class PerfilScreen extends React.Component {
             refThis.setState({
               emailInput: value.email,
               nameInput: value.name,
-              dateText: timeShow
+              dateText: timeShow,
+              nameNow: value.name,
+              timeNow: timeShow,
+              emailNow: value.email,
+              time: timeShow
             })
           } 
         })
@@ -150,7 +160,6 @@ class PerfilScreen extends React.Component {
 
     var time = date.getTime()
     var timeShow = timeConverter(time)
-    
 
     this.setState({
         date: false,
@@ -219,6 +228,78 @@ class PerfilScreen extends React.Component {
       }).catch(function(error) {
         // An error happened.
       });
+  }
+
+  save(){
+
+    var { emailInput, passwordInput, time, nameInput, nameNow, emailNow, dateNow, timeNow } = this.state
+
+    var refThis = this
+
+    var user = firebase.auth().currentUser
+
+    if(nameInput != nameNow){
+
+      if(user){
+        var refName = firebase.database().ref('users/' + user.uid + '/profile/name')
+        refName.set(nameInput).then(function() {
+          user.updateProfile({displayName: nameInput}).then(function(){
+            refThis.refs.toast.show('Nome Modificado!')
+          })
+        })
+      }
+    } 
+
+    if(time != timeNow){
+
+      if(user){
+        var refTime = firebase.database().ref('users/' + user.uid + '/profile/date')
+        refTime.set(time).then(function(){
+          refThis.refs.toast.show('Data Modificada!')
+        })
+      }
+    }
+
+    if(emailInput != emailNow){
+
+      if(passwordInput){
+        if(user){
+        firebase.auth().signInWithEmailAndPassword(emailNow, passwordInput)
+        .then(function(result) {
+          user.updateEmail(emailInput).then(function() {
+          // Update successful.
+            var refEmail = firebase.database().ref('users/' + user.uid + '/profile/email')
+            refEmail.set(emailInput).then(function(){
+              refThis.refs.toast.show('Email Modificado!')
+            })
+          }).catch(function(error) {
+            var errorCode = error.code;
+            var errorMessage = error.message;
+
+            var error = checkError(errorCode)
+
+            console.log(errorMessage)
+            console.log(errorCode)
+
+            refThis.refs.toast.show(error)
+          });
+        }).catch(function(error) {
+            var errorCode = error.code
+            var errorMessage = error.message  
+
+            var error = checkError(errorCode)
+
+            refThis.refs.toast.show(error)   
+
+            refThis.setState({
+                loading: false
+            })
+        })
+        }
+      } else {
+        refThis.refs.toast.show('Necessita Senha!')
+      }
+    }
   }
 
   render(){
@@ -299,7 +380,7 @@ class PerfilScreen extends React.Component {
             placeholder="SENHA"
             placeholderTextColor={colors.secondaryOp}
             keyboardAppearance="dark"
-            onSubmitEditing={() => { this.signUp() }}
+            onSubmitEditing={() => { this.save() }}
             blurOnSubmit={false}
             secureTextEntry={true}
           />
@@ -317,7 +398,7 @@ class PerfilScreen extends React.Component {
               <View style={loginstyles.viewButton}>
             <View style={perfilstyles.optionsBottom}>
               {fontLoaded ? (<Text style={perfilstyles.loginText}>Salvar</Text>) : null }
-              <TouchableHighlight style={perfilstyles.buttonLogin} onPress={() => this.signUp()}>
+              <TouchableHighlight style={perfilstyles.buttonLogin} onPress={() => this.save()}>
                 <Icon name="save" color={colors.white} size={24}/> 
               </TouchableHighlight>
             </View>
@@ -325,7 +406,8 @@ class PerfilScreen extends React.Component {
           <TouchableHighlight style={perfilstyles.leaveButton} onPress={() => this.logout()}>
               <Text style={perfilstyles.leave}>Sair</Text> 
           </TouchableHighlight>
-          <Spinner
+        </View>
+        <Spinner
               visible={loading}
             /> 
             <Toast 
@@ -338,7 +420,6 @@ class PerfilScreen extends React.Component {
               opacity={0.8}
               textStyle={{color: '#FFF'}}
               />
-        </View>
       </ScrollView>
     )
   }
@@ -739,6 +820,7 @@ class HomeScreen extends React.Component {
     this.getList = this.getList.bind(this)
     this.switchFavo = this.switchFavo.bind(this)
     this.logout = this.logout.bind(this)
+    this.getProductsOff = this.getProductsOff.bind(this)
   }
 
 
@@ -786,6 +868,10 @@ class HomeScreen extends React.Component {
       }
     })
 
+    refThis.getProductsOff()
+
+
+
     this.getList(false)
   }
 
@@ -820,7 +906,7 @@ class HomeScreen extends React.Component {
           if(favo){
             for (variavel in favo) {
               var key = variavel
-              console.log('Key : ' + key)
+              
               // console.log(array)
               for(variavel in array){
                 var produ = array[variavel]
@@ -851,8 +937,38 @@ class HomeScreen extends React.Component {
         fullProducst: array,
         refresh: false,
       })
+
+      
+
+      const jsonValue = JSON.stringify(newArray)
+      AsyncStorage.setItem('products', jsonValue)
+    }).catch(function(error) {
+        var errorCode = error.code
+        var errorMessage = error.message  
+
+        console.log('Deu erro aqui')
+        var error = checkError(errorCode)
+
+        refThis.refs.toast.show(error)   
+
+        refThis.setState({
+            loading: false
+        })
     })
   }
+
+
+  async getProductsOff(){
+    try {
+      let products = await AsyncStorage.getItem('products')
+      console.log(products)  
+      console.log('Deu bom')
+    } catch (error) {
+      console.log(error)
+      console.log('Deu ruim')
+    }
+  }
+
 
   handleSearch(text){
 
