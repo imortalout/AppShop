@@ -77,10 +77,10 @@ class SignUpScreen extends React.Component {
   constructor(props){
     super(props)
 
-    this._handleConfirm = this._handleConfirm.bind(this)
-    this._hideDate = this._hideDate.bind(this)
-    this._openDate = this._openDate.bind(this)
-    this._signUp = this._signUp.bind(this)
+    this.handleConfirm = this.handleConfirm.bind(this)
+    this.hideDate = this.hideDate.bind(this)
+    this.openDate = this.openDate.bind(this)
+    this.signUp = this.signUp.bind(this)
   }
 
    async componentWillMount() {
@@ -95,7 +95,7 @@ class SignUpScreen extends React.Component {
       })
   }
 
-  _handleConfirm(date){
+  handleConfirm(date){
 
      var time = date.getTime()
 
@@ -127,19 +127,15 @@ class SignUpScreen extends React.Component {
     })
   }
 
-  _hideDate(){
-    this.setState({
-        date: false
-    })
+  hideDate(){
+    this.setState({date: false})
   }
 
-  _openDate(){
-    this.setState({
-        date: true
-    })
+  openDate(){
+    this.setState({date: true})
   }
 
-  _signUp(){
+  signUp(){
 
     var { emailInput, passwordInput, nameInput, time } = this.state
 
@@ -182,8 +178,6 @@ class SignUpScreen extends React.Component {
               animeSign: false
           })
       })
-    } else {
-
     }
   }
 
@@ -222,7 +216,7 @@ class SignUpScreen extends React.Component {
           />
             ) : null}
            <View style={signstyles.separator}></View>
-           <TouchableHighlight onPress={() => this._openDate()}>
+           <TouchableHighlight onPress={() => this.openDate()}>
             <Text style={signstyles.date} >{dateText}</Text>
           </TouchableHighlight>
           <View style={signstyles.separator}></View>
@@ -265,7 +259,7 @@ class SignUpScreen extends React.Component {
             placeholder="SENHA"
             placeholderTextColor={colors.white}
             keyboardAppearance="dark"
-            onSubmitEditing={() => { this._signUp() }}
+            onSubmitEditing={() => { this.signUp() }}
             blurOnSubmit={false}
             secureTextEntry={true}
           />
@@ -274,15 +268,15 @@ class SignUpScreen extends React.Component {
           <DateTimePickerModal
                 isVisible={date}
                 mode="date"
-                onConfirm={this._handleConfirm}
-                onCancel={this._hideDate}
+                onConfirm={this.handleConfirm}
+                onCancel={this.hideDate}
                 headerTextIOS="Escolha as Horas"
                 confirmTextIOS="Confirmar"
                 cancelTextIOS="Cancelar"
               />
               <View style={loginstyles.viewButton}>
             {fontLoaded ? (<Text style={signstyles.loginText}>Inscrever-se</Text>) : null }
-            <TouchableHighlight style={signstyles.buttonLogin} onPress={() => this._signUp()}>
+            <TouchableHighlight style={signstyles.buttonLogin} onPress={() => this.signUp()}>
               <Icon name="arrow-right" color={colors.secondary} size={24}/> 
             </TouchableHighlight>
             <Spinner
@@ -383,7 +377,8 @@ class HomeScreen extends React.Component {
     products: [],
     fullProducst: [],
     searchInput: '',
-    refresh: false
+    refresh: false,
+    favo: false
   }
 
   constructor(props){
@@ -392,6 +387,7 @@ class HomeScreen extends React.Component {
     this.handleSearch = this.handleSearch.bind(this)
     this.onRefresh = this.onRefresh.bind(this)
     this.getList = this.getList.bind(this)
+    this.switchFavo = this.switchFavo.bind(this)
   }
 
 
@@ -435,20 +431,16 @@ class HomeScreen extends React.Component {
               nameUser: nameNow[0]
             })
           } 
-
-          
         })   
       } else {
         refThis.props.navigation.navigate('Login')
       }
     })
 
-
-
-    this.getList()
+    this.getList(false)
   }
 
-  getList(){
+  getList(star){
 
     var refThis = this
 
@@ -492,8 +484,21 @@ class HomeScreen extends React.Component {
         })
       }
 
+      var newArray = []
+
+      for(variavel in array){
+        var produ = array[variavel]
+        if(star){
+          if(produ.star === true){
+            newArray.push(produ)
+          }
+        }else {
+          newArray.push(produ)
+        }
+      }
+
       refThis.setState({
-        products: array,
+        products: newArray,
         fullProducst: array,
         refresh: false,
       })
@@ -534,9 +539,11 @@ class HomeScreen extends React.Component {
     this.setState({
       refresh: true,
       products: [],
-    })
+    })  
 
-    this.getList()
+    var start = this.state.favo
+
+    this.getList(start)
   }
 
   star(product){
@@ -554,10 +561,15 @@ class HomeScreen extends React.Component {
     }
   }
 
+  switchFavo(favo){
+    this.setState({favo: favo})
+    this.getList(favo)
+  }
+
 
   render(){
 
-    var { nameUser, fontLoaded, products, searchInput, refresh } =  this.state
+    var { nameUser, fontLoaded, products, searchInput, refresh, favo } =  this.state
 
     return (
     <ScrollView contentContainerStyle={homestyles.container} keyboardShouldPersistTaps='handled' scrollEnabled={false}>
@@ -567,7 +579,18 @@ class HomeScreen extends React.Component {
           {fontLoaded ? (<Text style={homestyles.title}>Olá, {nameUser}</Text>): null}
           <Icon name="user" color={colors.white} size={20}/> 
         </View>
-        {fontLoaded ? (<Text style={homestyles.search}>Produtos</Text>): null}
+        <View style={homestyles.optionsView}>
+          {fontLoaded ? (<Text style={homestyles.search}>Produtos</Text>): null}  
+          <View style={homestyles.switchView}>
+              <TouchableHighlight  onPress={() => this.switchFavo(false) }>  
+                { favo ? (<Text style={homestyles.optionsFalse}>Todos</Text>) : (<Text style={homestyles.options}>Todos</Text>)}
+              </TouchableHighlight>
+              <TouchableHighlight  onPress={() => this.switchFavo(true)}>  
+                {favo ? (<Text style={homestyles.options}>Favoritos</Text>) : (<Text style={homestyles.optionsFalse}>Favoritos</Text>)}
+              </TouchableHighlight>
+          </View>
+        </View>
+        
         {fontLoaded ? (
             <View style={homestyles.searchView}>
               <Icon name="search" color={colors.secondary} size={20}/> 
@@ -662,6 +685,15 @@ const homestyles = StyleSheet.create({
     color: colors.white,
     fontFamily: 'ubuntuMedium',
   },
+  optionsView : {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%'
+  },
+  switchView : {
+    flexDirection: 'row',
+  },
   search : {
     fontSize: 18,
     color: colors.secondary,
@@ -670,6 +702,18 @@ const homestyles = StyleSheet.create({
     fontFamily: 'ubuntuMedium',
     marginLeft: 6,
     marginBottom: 6
+  },
+  options : {
+    fontSize: 14,
+    color: colors.secondary,
+    fontFamily: 'ubuntuMedium',
+    marginRight: 10,
+  },
+  optionsFalse: {
+    fontSize: 14,
+    opacity: 0.4,
+    fontFamily: 'ubuntuMedium',
+    marginRight: 10,
   },
   list: {
     width: '100%',
@@ -694,7 +738,8 @@ const homestyles = StyleSheet.create({
     marginLeft: 2,
     alignItems: 'flex-start',
     marginTop: 4,
-    width: '60%'
+    width: '60%',
+    height: '100%'
   },
   cellTitle : {
     fontSize: 16,
