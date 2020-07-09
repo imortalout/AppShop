@@ -133,11 +133,8 @@ class PerfilScreen extends React.Component {
           var value = snapshot.val()
 
           if(value){
-            console.log(value)
 
             var timeShow = timeConverter(value.date)
-
-            console.log(timeShow)
 
             refThis.setState({
               emailInput: value.email,
@@ -277,9 +274,6 @@ class PerfilScreen extends React.Component {
             var errorMessage = error.message;
 
             var error = checkError(errorCode)
-
-            console.log(errorMessage)
-            console.log(errorCode)
 
             refThis.refs.toast.show(error)
           });
@@ -805,7 +799,7 @@ class HomeScreen extends React.Component {
     fontLoaded: false,
     nameUser: '',
     userInfo: null,
-    products: [],
+    products: null,
     fullProducst: [],
     searchInput: '',
     refresh: false,
@@ -842,6 +836,7 @@ class HomeScreen extends React.Component {
       //   photo: 'https://firebasestorage.googleapis.com/v0/b/appshopper-92ab0.appspot.com/o/Laranja.png?alt=media&token=bfad6156-c39e-4917-8683-edf197a54c25',
       //   desc: 'Melhor  do que essa tu nao encontra em lugar nenhum'
       // })
+
   }
 
 
@@ -868,9 +863,14 @@ class HomeScreen extends React.Component {
       }
     })
 
-    refThis.getProductsOff()
-
-
+    // refThis.getProductsOff()
+    
+    setTimeout(function () {  
+      var products = refThis.state.products
+      if(!products){
+        refThis.getProductsOff()
+      }
+    }, 6000)
 
     this.getList(false)
   }
@@ -907,7 +907,6 @@ class HomeScreen extends React.Component {
             for (variavel in favo) {
               var key = variavel
               
-              // console.log(array)
               for(variavel in array){
                 var produ = array[variavel]
                 if(produ.key === key){
@@ -937,16 +936,12 @@ class HomeScreen extends React.Component {
         fullProducst: array,
         refresh: false,
       })
-
-      
-
+  
       const jsonValue = JSON.stringify(newArray)
       AsyncStorage.setItem('products', jsonValue)
     }).catch(function(error) {
         var errorCode = error.code
         var errorMessage = error.message  
-
-        console.log('Deu erro aqui')
         var error = checkError(errorCode)
 
         refThis.refs.toast.show(error)   
@@ -959,13 +954,24 @@ class HomeScreen extends React.Component {
 
 
   async getProductsOff(){
+
+    var refThis = this
+
     try {
       let products = await AsyncStorage.getItem('products')
-      console.log(products)  
-      console.log('Deu bom')
+
+      var newProducts = JSON.parse(products)
+      var array = []
+      for (var i = 0 ; i < newProducts.length; i++) {
+        var product = newProducts[i]
+        array.push(product)
+      }
+
+      refThis.setState({
+        products: array
+      })
+
     } catch (error) {
-      console.log(error)
-      console.log('Deu ruim')
     }
   }
 
