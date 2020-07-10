@@ -38,7 +38,7 @@ const windowHeight = Dimensions.get('window').height;
 // 123456789[Senha]
 
 var colors = {
-  primary: '#1EA7DB',
+  primary: '#E91313',
   secondary: '#3E4148',
   secondaryOp: 'rgba(62, 65, 72, 0.6)',
   white: '#FFF',
@@ -835,15 +835,6 @@ class HomeScreen extends React.Component {
       this.setState({
           fontLoaded: true,
       })
-
-      // Adicionando Produtos
-      // var refBase =  firebase.database().ref('products').push()
-      // refBase.set({
-      //   name: 'Laranja',
-      //   photo: 'https://firebasestorage.googleapis.com/v0/b/appshopper-92ab0.appspot.com/o/Laranja.png?alt=media&token=bfad6156-c39e-4917-8683-edf197a54c25',
-      //   desc: 'Melhor  do que essa tu nao encontra em lugar nenhum'
-      // })
-
   }
 
 
@@ -1496,7 +1487,8 @@ const loginstyles = StyleSheet.create({
     paddingTop: 20,
   },
   logo : {
-    height: 120
+    height: 100,
+    width: 100,
   },
   login: {
     paddingLeft: 20,
