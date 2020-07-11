@@ -42,7 +42,7 @@ var colors = {
   secondary: '#3E4148',
   secondaryOp: 'rgba(62, 65, 72, 0.6)',
   white: '#FFF',
-  background: '#E7ECFA',
+  background: '#E7E7E7',
   alert: '#E71515'
 }
 
